@@ -1,5 +1,7 @@
 package com.piyush.trustguard.controller;
 
+import com.piyush.trustguard.dto.LoginRequest;
+import com.piyush.trustguard.dto.LoginResponse;
 import com.piyush.trustguard.dto.RegisterRequest;
 import com.piyush.trustguard.dto.RegisterResponse;
 import com.piyush.trustguard.entity.User;
@@ -28,5 +30,12 @@ public class AuthController
                 user.getUsername(),
                 user.getEmail()
         );
+    }
+
+    @PostMapping("/auth/login")
+    public LoginResponse login(@Valid @RequestBody LoginRequest request)
+    {
+        String token= authService.login(request);
+        return new LoginResponse(token);
     }
 }
