@@ -32,5 +32,29 @@ public class JwtService
                 .signWith(secretKey)
                 .compact();
     }
+    public String extractEmail(String token)
+    {
+        return Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getSubject();
+    }
+    private boolean isTokenExpired(String token) {
 
+        Date expiration = Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getExpiration();
+
+        return expiration.before(new Date());
+    }
+    public boolean isTokenValid(String token,String email)
+    {
+        String extractedEmail=extractEmail(token);
+        return extractedEmail.equals(email)&&!isTokenExpired(token);
+    }
 }

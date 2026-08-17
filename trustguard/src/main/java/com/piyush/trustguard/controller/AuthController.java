@@ -32,7 +32,7 @@ public class AuthController
         );
     }
 
-    @PostMapping("/auth/login")
+    @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request)
     {
         String token= authService.login(request);
