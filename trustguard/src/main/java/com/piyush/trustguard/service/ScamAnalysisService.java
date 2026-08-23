@@ -7,17 +7,26 @@ import com.piyush.trustguard.dto.ScamAnalysisRequest;
 import com.piyush.trustguard.dto.ScamAnalysisResponse;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
+import com.piyush.trustguard.risk.RuleBasedAnalyzer;
+import com.piyush.trustguard.risk.RuleAnalysisResult;
+import com.piyush.trustguard.risk.RiskAssessmentService;
 
 @Service
 public class ScamAnalysisService {
 
     private final Client geminiClient;
     private final ObjectMapper objectMapper;
+    private final RuleBasedAnalyzer ruleBasedAnalyzer;
+    private final RiskAssessmentService riskAssessmentService;
 
     public ScamAnalysisService(Client geminiClient,
-                               ObjectMapper objectMapper) {
+                               ObjectMapper objectMapper,
+                               RuleBasedAnalyzer ruleBasedAnalyzer,
+                               RiskAssessmentService riskAssessmentService) {
         this.geminiClient = geminiClient;
         this.objectMapper = objectMapper;
+        this.ruleBasedAnalyzer=ruleBasedAnalyzer;
+        this.riskAssessmentService=riskAssessmentService;
     }
 
     public ScamAnalysisResponse analyze(ScamAnalysisRequest request)
@@ -33,7 +42,7 @@ public class ScamAnalysisService {
                 Return ONLY valid JSON.
                 
                 The JSON MUST contain exactly these six fields:
-                - isScam
+                - scam
                 - confidence
                 - category
                 - redFlags
@@ -41,11 +50,10 @@ public class ScamAnalysisService {
                 - recommendation
                 
                 DO NOT include any other fields.
-                In particular, DO NOT include a field named "scam".
 
                 Rules:
                 - confidence must be between 0 and 1.
-                - isScam should be true only when there is meaningful
+                - scam should be true only when there is meaningful
                   evidence of scam/fraudulent behavior.
                 - redFlags should contain the specific suspicious
                   characteristics found in the message.
@@ -71,10 +79,23 @@ public class ScamAnalysisService {
                 );
 
         String json = response.text();
+        ScamAnalysisResponse analysis =
+                objectMapper.readValue(
+                        json,
+                        ScamAnalysisResponse.class
+                );
 
-        return objectMapper.readValue(
-                json,
-                ScamAnalysisResponse.class
-        );
+        RuleAnalysisResult ruleResult =
+                ruleBasedAnalyzer.analyze(request.getText());
+
+        int riskScore =
+                riskAssessmentService.calculateRiskScore(
+                        ruleResult.getScore(),
+                        analysis.getConfidence(),
+                        analysis.isScam()
+                );
+
+        analysis.setRiskScore(riskScore);
+        return analysis;
     }
 }

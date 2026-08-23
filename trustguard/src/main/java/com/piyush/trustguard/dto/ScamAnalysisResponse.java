@@ -3,7 +3,6 @@ package com.piyush.trustguard.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 @Data
@@ -17,4 +16,5 @@ public class ScamAnalysisResponse
     private List<String> redFlags;
     private String explanation;
     private String recommendation;
+    private int riskScore;
 }

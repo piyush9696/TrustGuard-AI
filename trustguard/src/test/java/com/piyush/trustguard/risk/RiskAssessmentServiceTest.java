@@ -11,7 +11,7 @@ public class RiskAssessmentServiceTest
     @Test
     void shouldCalculateHighRisk()
     {
-        int result = service.calculateRiskScore(75, 0.98);
+        int result = service.calculateRiskScore(75, 0.98,true);
 
         assertEquals(99, result);
     }
@@ -19,7 +19,7 @@ public class RiskAssessmentServiceTest
     @Test
     void shouldCalculateZeroRisk()
     {
-        int result = service.calculateRiskScore(0, 0.0);
+        int result = service.calculateRiskScore(0, 0.0,false);
 
         assertEquals(0, result);
     }
@@ -27,8 +27,17 @@ public class RiskAssessmentServiceTest
     @Test
     void shouldCombineRuleAndAiScore()
     {
-        int result = service.calculateRiskScore(30, 0.50);
+        int result = service.calculateRiskScore(30, 0.50,true);
 
         assertEquals(44, result);
+    }
+
+    @Test
+    void shouldNotTreatSafeConfidenceAsRisk()
+    {
+        int result =
+                service.calculateRiskScore(0, 0.99, false);
+
+        assertEquals(0, result);
     }
 }
