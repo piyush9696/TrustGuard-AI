@@ -11,6 +11,8 @@ import com.piyush.trustguard.risk.RuleBasedAnalyzer;
 import com.piyush.trustguard.risk.RuleAnalysisResult;
 import com.piyush.trustguard.risk.RiskAssessmentService;
 
+import java.util.ArrayList;
+
 @Service
 public class ScamAnalysisService {
 
@@ -87,7 +89,15 @@ public class ScamAnalysisService {
 
         RuleAnalysisResult ruleResult =
                 ruleBasedAnalyzer.analyze(request.getText());
+        if (analysis.getRedFlags() == null) {
+            analysis.setRedFlags(new ArrayList<>());
+        }
 
+        for (String flag : ruleResult.getRedFlags()) {
+            if (!analysis.getRedFlags().contains(flag)) {
+                analysis.getRedFlags().add(flag);
+            }
+        }
         int riskScore =
                 riskAssessmentService.calculateRiskScore(
                         ruleResult.getScore(),

@@ -52,4 +52,26 @@ public class RuleBasedAnalyzerTest
         assertTrue(result.getRedFlags()
                 .contains("Credential or sensitive information request"));
     }
+
+    @Test
+    void shouldDetectMultipleRedFlags()
+    {
+        RuleAnalysisResult result =
+                analyzer.analyze(
+                        "URGENT! Your account will be blocked. Please provide your OTP."
+                );
+
+        assertEquals(75, result.getScore());
+
+        assertEquals(3, result.getRedFlags().size());
+
+        assertTrue(result.getRedFlags()
+                .contains("Urgency language"));
+
+        assertTrue(result.getRedFlags()
+                .contains("Account threat"));
+
+        assertTrue(result.getRedFlags()
+                .contains("Credential or sensitive information request"));
+    }
 }
