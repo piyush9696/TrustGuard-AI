@@ -1,63 +1,76 @@
-# TrustGuard
+# TrustGuard AI
 
-TrustGuard is a backend application for detecting potentially fraudulent and
-phishing messages using AI.
+TrustGuard AI is a Spring Boot backend for detecting potential scam and phishing messages using a combination of Gemini AI analysis and deterministic rule-based analysis.
 
-The project is being built with Spring Boot and PostgreSQL, with Google Gemini
-used for the initial AI-based analysis. The main goal is to develop a system
-that does more than simply ask an AI model whether a message is a scam. Future
-versions will combine AI analysis with rule-based signals, URL analysis, and
-threat intelligence to produce a more reliable risk assessment.
-
-## Current Features
-
-The current version of TrustGuard provides:
+## Features
 
 - User registration and login
-- BCrypt password hashing
 - JWT-based authentication
-- Protected REST APIs
-- PostgreSQL persistence
-- AI-based analysis of suspicious messages
-- Scam category and confidence estimation
-- Detection of potential red flags
-- Explanation and recommendation for the user
+- Protected API endpoints
+- Gemini AI-based scam analysis
+- Rule-based scam detection
+- Risk score calculation
+- Combined AI and rule-based red flags
+- Swagger/OpenAPI documentation and testing
 
-## How It Works
+## Scam Analysis
 
-A user first creates an account and logs in. After authentication, the server
-provides a JWT which is required for accessing protected endpoints.
+The `/api/analyze` endpoint accepts a message and analyzes it using two approaches.
 
-For scam analysis, the authenticated user sends a suspicious message to the
-analysis endpoint. TrustGuard sends the message to Google Gemini and converts
-the model's response into a structured result containing the predicted scam
-status, confidence, category, red flags, explanation, and recommendation.
+### Gemini AI Analysis
 
-The AI result is currently the first layer of the detection system. The later
-stages of the project will add additional signals so that the final decision
-does not depend entirely on an AI model.
+Gemini analyzes the message for:
 
-## Tech Stack
+- Scam classification
+- Confidence
+- Scam category
+- Red flags
+- Explanation
+- Recommendation
 
-- Java
-- Spring Boot
-- Spring Security
-- Spring Data JPA
-- Hibernate
-- PostgreSQL
-- Lombok
-- Jakarta Validation
-- JWT
-- BCrypt
-- Google Gemini API
-- Google GenAI Java SDK
-- Maven
-- Git / GitHub
-- Postman
+### Rule-Based Analysis
 
-## API
+The rule-based analyzer currently checks for:
 
-### Register
+- Urgency language
+- Account threats
+- Credential or sensitive information requests
 
-```http
-POST /api/auth/register
+The results from both approaches are combined into the final analysis.
+
+## Risk Scoring
+
+The final risk score combines:
+
+- Rule-based analysis: 60%
+- AI analysis: 40%
+
+AI confidence contributes to the risk score only when Gemini classifies the message as a scam.
+
+## Security
+
+Spring Security is used with JWT authentication.
+
+Authentication endpoints are publicly accessible, while other API endpoints require a valid JWT.
+
+The application uses stateless sessions.
+
+## Swagger / OpenAPI
+
+Swagger/OpenAPI is configured for API documentation and testing.
+
+Swagger UI can be used to:
+
+- View available endpoints
+- Authorize using a JWT
+- Test protected endpoints
+- View API responses
+
+## Testing
+
+JUnit tests have been added for:
+
+- Rule-based scam detection
+- Risk assessment
+
+The risk assessment tests also cover the case where Gemini has high confidence that a message is not a scam, ensuring that safe messages do not receive a high risk score.
