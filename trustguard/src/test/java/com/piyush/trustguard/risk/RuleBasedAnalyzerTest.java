@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class RuleBasedAnalyzerTest
 {
     private final RuleBasedAnalyzer analyzer=
-            new RuleBasedAnalyzer();
+            new RuleBasedAnalyzer(new UrlAnalyzer());
 
     @Test
     void shouldDetectUrgency()
