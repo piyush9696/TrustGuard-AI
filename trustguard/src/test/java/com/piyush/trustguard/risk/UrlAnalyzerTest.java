@@ -1,33 +1,46 @@
 package com.piyush.trustguard.risk;
+
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
-public class UrlAnalyzerTest
+class UrlAnalyzerTest
 {
-    private final UrlAnalyzer analyzer = new UrlAnalyzer();
+    private final WebRiskService webRiskService =
+            mock(WebRiskService.class);
+
+    private final UrlAnalyzer urlAnalyzer =
+            new UrlAnalyzer(webRiskService);
 
     @Test
-    void shouldAcceptNormalDomain()
+    void shouldDetectLegitimateUrl()
     {
+        when(webRiskService.isThreatDetected("https://amazon.in/orders"))
+                .thenReturn(false);
+
         assertFalse(
-                analyzer.isSuspicious("https://amazon.in/orders")
+                urlAnalyzer.isSuspicious("https://amazon.in/orders")
         );
     }
 
     @Test
-    void shouldDetectIpAddress()
+    void shouldDetectIpBasedUrl()
     {
         assertTrue(
-                analyzer.isSuspicious("http://192.168.1.10/login")
+                urlAnalyzer.isSuspicious("http://192.168.1.10/login")
         );
+
+        verifyNoInteractions(webRiskService);
     }
 
     @Test
     void shouldDetectInvalidUrl()
     {
         assertTrue(
-                analyzer.isSuspicious("not-a-valid-url")
+                urlAnalyzer.isSuspicious("not-a-valid-url")
         );
+
+        verifyNoInteractions(webRiskService);
     }
 }
