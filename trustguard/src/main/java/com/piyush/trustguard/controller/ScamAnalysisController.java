@@ -22,7 +22,6 @@ public class ScamAnalysisController
     @PostMapping
     public ScamAnalysisResponse analyze(
             @Valid @RequestBody ScamAnalysisRequest request)
-        throws Exception
     {
         return scamAnalysisService.analyze(request);
     }

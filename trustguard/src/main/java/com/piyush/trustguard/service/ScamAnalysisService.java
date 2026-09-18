@@ -5,6 +5,7 @@ import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.piyush.trustguard.dto.ScamAnalysisRequest;
 import com.piyush.trustguard.dto.ScamAnalysisResponse;
+import com.piyush.trustguard.exception.AnalysisException;
 import com.piyush.trustguard.risk.InputTypeDetector;
 import com.piyush.trustguard.risk.RuleAnalysisResult;
 import com.piyush.trustguard.risk.RuleBasedAnalyzer;
@@ -38,7 +39,6 @@ public class ScamAnalysisService
     }
 
     public ScamAnalysisResponse analyze(ScamAnalysisRequest request)
-            throws Exception
     {
         String text = request.getText().trim();
 
@@ -124,20 +124,41 @@ public class ScamAnalysisService
                         .responseMimeType("application/json")
                         .build();
 
-        GenerateContentResponse response =
-                geminiClient.models.generateContent(
-                        "gemini-3.6-flash",
-                        prompt,
-                        config
-                );
+        ScamAnalysisResponse analysis;
 
-        String json = response.text();
+        try
+        {
+            GenerateContentResponse response =
+                    geminiClient.models.generateContent(
+                            "gemini-3.6-flash",
+                            prompt,
+                            config
+                    );
 
-        ScamAnalysisResponse analysis =
-                objectMapper.readValue(
-                        json,
-                        ScamAnalysisResponse.class
-                );
+            String json = response.text();
+
+            if (json == null || json.isBlank())
+            {
+                throw new AnalysisException("AI returned an empty response");
+            }
+
+            analysis =
+                    objectMapper.readValue(
+                            json,
+                            ScamAnalysisResponse.class
+                    );
+        }
+        catch (AnalysisException exception)
+        {
+            throw exception;
+        }
+        catch (Exception exception)
+        {
+            throw new AnalysisException(
+                    "Unable to complete scam analysis",
+                    exception
+            );
+        }
 
         RuleAnalysisResult ruleResult =
                 ruleBasedAnalyzer.analyze(text);
