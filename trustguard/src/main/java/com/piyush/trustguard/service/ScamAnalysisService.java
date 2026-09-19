@@ -12,6 +12,12 @@ import com.piyush.trustguard.risk.RuleBasedAnalyzer;
 import com.piyush.trustguard.risk.RiskAssessmentService;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
+import org.springframework.data.redis.core.StringRedisTemplate;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.Duration;
+import java.util.HexFormat;
 
 import java.util.ArrayList;
 
@@ -23,25 +29,49 @@ public class ScamAnalysisService
     private final RuleBasedAnalyzer ruleBasedAnalyzer;
     private final RiskAssessmentService riskAssessmentService;
     private final InputTypeDetector inputTypeDetector;
+    private final StringRedisTemplate redisTemplate;
+    private static final String CACHE_PREFIX = "trustguard:analysis:";
+    private static final Duration CACHE_TTL = Duration.ofMinutes(15);
 
     public ScamAnalysisService(
             Client geminiClient,
             ObjectMapper objectMapper,
             RuleBasedAnalyzer ruleBasedAnalyzer,
             RiskAssessmentService riskAssessmentService,
-            InputTypeDetector inputTypeDetector)
+            InputTypeDetector inputTypeDetector,
+            StringRedisTemplate redisTemplate)
     {
         this.geminiClient = geminiClient;
         this.objectMapper = objectMapper;
         this.ruleBasedAnalyzer = ruleBasedAnalyzer;
         this.riskAssessmentService = riskAssessmentService;
         this.inputTypeDetector = inputTypeDetector;
+        this.redisTemplate = redisTemplate;
     }
+
 
     public ScamAnalysisResponse analyze(ScamAnalysisRequest request)
     {
         String text = request.getText().trim();
 
+        String cacheKey = buildCacheKey(text);
+
+        try
+        {
+            String cachedResult =
+                    redisTemplate.opsForValue().get(cacheKey);
+
+            if (cachedResult != null)
+            {
+                return objectMapper.readValue(
+                        cachedResult,
+                        ScamAnalysisResponse.class
+                );
+            }
+        }
+        catch (Exception ignored)
+        {
+        }
         boolean isUrl = inputTypeDetector.isUrl(text);
 
         String prompt;
@@ -185,6 +215,44 @@ public class ScamAnalysisService
 
         analysis.setRiskScore(riskScore);
 
+        try
+        {
+            String result =
+                    objectMapper.writeValueAsString(analysis);
+
+            redisTemplate.opsForValue().set(
+                    cacheKey,
+                    result,
+                    CACHE_TTL
+            );
+        }
+        catch (Exception ignored)
+        {
+        }
+
         return analysis;
+    }
+    private String buildCacheKey(String text)
+    {
+        try
+        {
+            MessageDigest digest =
+                    MessageDigest.getInstance("SHA-256");
+
+            byte[] hash =
+                    digest.digest(
+                            text.getBytes(StandardCharsets.UTF_8)
+                    );
+
+            return CACHE_PREFIX +
+                    HexFormat.of().formatHex(hash);
+        }
+        catch (Exception exception)
+        {
+            throw new IllegalStateException(
+                    "Unable to create cache key",
+                    exception
+            );
+        }
     }
 }
