@@ -1,8 +1,11 @@
 package com.piyush.trustguard.service;
 
-import com.google.genai.Client;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestClient;
+import tools.jackson.databind.JsonNode;
+import java.util.List;
+import java.util.Map;
 import com.piyush.trustguard.dto.ScamAnalysisRequest;
 import com.piyush.trustguard.dto.ScamAnalysisResponse;
 import com.piyush.trustguard.exception.AnalysisException;
@@ -24,7 +27,8 @@ import java.util.ArrayList;
 @Service
 public class ScamAnalysisService
 {
-    private final Client geminiClient;
+    private final RestClient restClient;
+    private final String groqApiKey;
     private final ObjectMapper objectMapper;
     private final RuleBasedAnalyzer ruleBasedAnalyzer;
     private final RiskAssessmentService riskAssessmentService;
@@ -34,14 +38,15 @@ public class ScamAnalysisService
     private static final Duration CACHE_TTL = Duration.ofMinutes(15);
 
     public ScamAnalysisService(
-            Client geminiClient,
             ObjectMapper objectMapper,
             RuleBasedAnalyzer ruleBasedAnalyzer,
             RiskAssessmentService riskAssessmentService,
             InputTypeDetector inputTypeDetector,
-            StringRedisTemplate redisTemplate)
+            StringRedisTemplate redisTemplate,
+            @Value("${groq.api-key}") String groqApiKey)
     {
-        this.geminiClient = geminiClient;
+        this.restClient = RestClient.create();
+        this.groqApiKey = groqApiKey;
         this.objectMapper = objectMapper;
         this.ruleBasedAnalyzer = ruleBasedAnalyzer;
         this.riskAssessmentService = riskAssessmentService;
@@ -149,27 +154,17 @@ public class ScamAnalysisService
                     """.formatted(text);
         }
 
-        GenerateContentConfig config =
-                GenerateContentConfig.builder()
-                        .responseMimeType("application/json")
-                        .build();
-
         ScamAnalysisResponse analysis;
 
         try
         {
-            GenerateContentResponse response =
-                    geminiClient.models.generateContent(
-                            "gemini-3.6-flash",
-                            prompt,
-                            config
-                    );
-
-            String json = response.text();
+            String json = callGroq(prompt);
 
             if (json == null || json.isBlank())
             {
-                throw new AnalysisException("AI returned an empty response");
+                throw new AnalysisException(
+                        "AI returned an empty response"
+                );
             }
 
             analysis =
@@ -251,6 +246,126 @@ public class ScamAnalysisService
         {
             throw new IllegalStateException(
                     "Unable to create cache key",
+                    exception
+            );
+        }
+    }
+    private String callGroq(String prompt)
+    {
+        Map<String, Object> schema =
+                Map.of(
+                        "type", "object",
+                        "properties", Map.of(
+                                "scam",
+                                Map.of("type", "boolean"),
+
+                                "confidence",
+                                Map.of("type", "number"),
+
+                                "category",
+                                Map.of("type", "string"),
+
+                                "redFlags",
+                                Map.of(
+                                        "type", "array",
+                                        "items",
+                                        Map.of("type", "string")
+                                ),
+
+                                "explanation",
+                                Map.of("type", "string"),
+
+                                "recommendation",
+                                Map.of("type", "string")
+                        ),
+                        "required",
+                        List.of(
+                                "scam",
+                                "confidence",
+                                "category",
+                                "redFlags",
+                                "explanation",
+                                "recommendation"
+                        ),
+                        "additionalProperties",
+                        false
+                );
+
+        Map<String, Object> jsonSchema =
+                Map.of(
+                        "name", "scam_analysis",
+                        "strict", true,
+                        "schema", schema
+                );
+
+        Map<String, Object> request =
+                Map.of(
+                        "model", "openai/gpt-oss-20b",
+
+                        "messages",
+                        List.of(
+                                Map.of(
+                                        "role", "user",
+                                        "content", prompt
+                                )
+                        ),
+
+                        "reasoning_effort", "low",
+
+                        "response_format",
+                        Map.of(
+                                "type", "json_schema",
+                                "json_schema", jsonSchema
+                        )
+                );
+
+        ResponseEntity<String> response =
+                restClient
+                        .post()
+                        .uri(
+                                "https://api.groq.com/openai/v1/chat/completions"
+                        )
+                        .header(
+                                "Authorization",
+                                "Bearer " + groqApiKey
+                        )
+                        .header(
+                                "Content-Type",
+                                "application/json"
+                        )
+                        .body(request)
+                        .retrieve()
+                        .toEntity(String.class);
+
+        try
+        {
+            JsonNode root =
+                    objectMapper.readTree(
+                            response.getBody()
+                    );
+
+            JsonNode content =
+                    root.at(
+                            "/choices/0/message/content"
+                    );
+
+            if (content.isMissingNode())
+            {
+                throw new AnalysisException(
+                        "AI response did not contain analysis content"
+                );
+            }
+
+            return content.asText();
+        }
+        catch (AnalysisException exception)
+        {
+            throw exception;
+        }
+        catch (Exception exception)
+        {
+            throw new AnalysisException(
+                    "Unable to parse AI response",
                     exception
             );
         }
