@@ -1,11 +1,5 @@
 package com.piyush.trustguard.service;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestClient;
-import tools.jackson.databind.JsonNode;
-import java.util.List;
-import java.util.Map;
 import com.piyush.trustguard.dto.ScamAnalysisRequest;
 import com.piyush.trustguard.dto.ScamAnalysisResponse;
 import com.piyush.trustguard.exception.AnalysisException;
@@ -13,16 +7,23 @@ import com.piyush.trustguard.risk.InputTypeDetector;
 import com.piyush.trustguard.risk.RuleAnalysisResult;
 import com.piyush.trustguard.risk.RuleBasedAnalyzer;
 import com.piyush.trustguard.risk.RiskAssessmentService;
-import org.springframework.stereotype.Service;
-import tools.jackson.databind.ObjectMapper;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
-import java.util.HexFormat;
-
 import java.util.ArrayList;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class ScamAnalysisService
@@ -34,8 +35,12 @@ public class ScamAnalysisService
     private final RiskAssessmentService riskAssessmentService;
     private final InputTypeDetector inputTypeDetector;
     private final StringRedisTemplate redisTemplate;
-    private static final String CACHE_PREFIX = "trustguard:analysis:";
-    private static final Duration CACHE_TTL = Duration.ofMinutes(15);
+
+    private static final String CACHE_PREFIX =
+            "trustguard:v2:analysis:";
+
+    private static final Duration CACHE_TTL =
+            Duration.ofMinutes(15);
 
     public ScamAnalysisService(
             ObjectMapper objectMapper,
@@ -54,8 +59,8 @@ public class ScamAnalysisService
         this.redisTemplate = redisTemplate;
     }
 
-
-    public ScamAnalysisResponse analyze(ScamAnalysisRequest request)
+    public ScamAnalysisResponse analyze(
+            ScamAnalysisRequest request)
     {
         String text = request.getText().trim();
 
@@ -64,7 +69,8 @@ public class ScamAnalysisService
         try
         {
             String cachedResult =
-                    redisTemplate.opsForValue().get(cacheKey);
+                    redisTemplate.opsForValue()
+                            .get(cacheKey);
 
             if (cachedResult != null)
             {
@@ -77,7 +83,9 @@ public class ScamAnalysisService
         catch (Exception ignored)
         {
         }
-        boolean isUrl = inputTypeDetector.isUrl(text);
+
+        boolean isUrl =
+                inputTypeDetector.isUrl(text);
 
         String prompt;
 
@@ -93,7 +101,7 @@ public class ScamAnalysisService
                     Return ONLY valid JSON.
 
                     The JSON MUST contain exactly these six fields:
-                    - scam
+                    - threatDetected
                     - confidence
                     - category
                     - redFlags
@@ -104,12 +112,20 @@ public class ScamAnalysisService
 
                     Rules:
                     - confidence must be between 0 and 1.
-                    - scam should be true only when there is meaningful
-                      evidence that the URL is malicious or unsafe.
+                    - threatDetected should be true only when there is
+                      meaningful evidence that the URL is malicious
+                      or represents a security threat.
                     - redFlags should contain the specific suspicious
                       characteristics found.
                     - category should describe the threat type, or
-                      "NONE" if it does not appear to be malicious.
+                      "NONE" if no meaningful threat is detected.
+                    - Possible categories include:
+                      PHISHING
+                      MALWARE
+                      CREDENTIAL_THEFT
+                      IMPERSONATION
+                      SOCIAL_ENGINEERING
+                      NONE
                     - Do not invent information that is not present.
                     - Do not include markdown or code fences.
 
@@ -120,16 +136,17 @@ public class ScamAnalysisService
         else
         {
             prompt = """
-                    You are a cybersecurity scam detection assistant.
+                    You are a cybersecurity threat detection assistant.
 
-                    Analyze the following message for signs of scams,
-                    phishing, fraud, impersonation, malicious requests,
-                    urgency tactics, or suspicious financial activity.
+                    Analyze the following message for signs of phishing,
+                    scams, fraud, impersonation, malicious requests,
+                    urgency tactics, credential theft, or suspicious
+                    financial activity.
 
                     Return ONLY valid JSON.
 
                     The JSON MUST contain exactly these six fields:
-                    - scam
+                    - threatDetected
                     - confidence
                     - category
                     - redFlags
@@ -140,12 +157,21 @@ public class ScamAnalysisService
 
                     Rules:
                     - confidence must be between 0 and 1.
-                    - scam should be true only when there is meaningful
-                      evidence of scam/fraudulent behavior.
+                    - threatDetected should be true only when there is
+                      meaningful evidence of a security threat.
                     - redFlags should contain the specific suspicious
                       characteristics found in the message.
-                    - category should describe the scam type, or
-                      "NONE" if it does not appear to be a scam.
+                    - category should describe the threat type, or
+                      "NONE" if no meaningful threat is detected.
+                    - Possible categories include:
+                      PHISHING
+                      FINANCIAL_SCAM
+                      REWARD_SCAM
+                      IMPERSONATION
+                      MALWARE
+                      CREDENTIAL_THEFT
+                      SOCIAL_ENGINEERING
+                      NONE
                     - Do not invent information that is not present.
                     - Do not include markdown or code fences.
 
@@ -158,7 +184,8 @@ public class ScamAnalysisService
 
         try
         {
-            String json = callGroq(prompt);
+            String json =
+                    callGroq(prompt);
 
             if (json == null || json.isBlank())
             {
@@ -190,36 +217,45 @@ public class ScamAnalysisService
 
         if (analysis.getRedFlags() == null)
         {
-            analysis.setRedFlags(new ArrayList<>());
+            analysis.setRedFlags(
+                    new ArrayList<>()
+            );
         }
 
-        for (String flag : ruleResult.getRedFlags())
+        for (String flag :
+                ruleResult.getRedFlags())
         {
-            if (!analysis.getRedFlags().contains(flag))
+            if (!analysis.getRedFlags()
+                    .contains(flag))
             {
-                analysis.getRedFlags().add(flag);
+                analysis.getRedFlags()
+                        .add(flag);
             }
         }
 
         int riskScore =
-                riskAssessmentService.calculateRiskScore(
-                        ruleResult.getScore(),
-                        analysis.getConfidence(),
-                        analysis.isScam()
-                );
+                riskAssessmentService
+                        .calculateRiskScore(
+                                ruleResult.getScore(),
+                                analysis.getConfidence(),
+                                analysis.isThreatDetected()
+                        );
 
         analysis.setRiskScore(riskScore);
 
         try
         {
             String result =
-                    objectMapper.writeValueAsString(analysis);
+                    objectMapper.writeValueAsString(
+                            analysis
+                    );
 
-            redisTemplate.opsForValue().set(
-                    cacheKey,
-                    result,
-                    CACHE_TTL
-            );
+            redisTemplate.opsForValue()
+                    .set(
+                            cacheKey,
+                            result,
+                            CACHE_TTL
+                    );
         }
         catch (Exception ignored)
         {
@@ -227,20 +263,26 @@ public class ScamAnalysisService
 
         return analysis;
     }
+
     private String buildCacheKey(String text)
     {
         try
         {
             MessageDigest digest =
-                    MessageDigest.getInstance("SHA-256");
+                    MessageDigest.getInstance(
+                            "SHA-256"
+                    );
 
             byte[] hash =
                     digest.digest(
-                            text.getBytes(StandardCharsets.UTF_8)
+                            text.getBytes(
+                                    StandardCharsets.UTF_8
+                            )
                     );
 
             return CACHE_PREFIX +
-                    HexFormat.of().formatHex(hash);
+                    HexFormat.of()
+                            .formatHex(hash);
         }
         catch (Exception exception)
         {
@@ -250,72 +292,113 @@ public class ScamAnalysisService
             );
         }
     }
+
     private String callGroq(String prompt)
     {
         Map<String, Object> schema =
                 Map.of(
-                        "type", "object",
-                        "properties", Map.of(
-                                "scam",
-                                Map.of("type", "boolean"),
+                        "type",
+                        "object",
+
+                        "properties",
+                        Map.of(
+                                "threatDetected",
+                                Map.of(
+                                        "type",
+                                        "boolean"
+                                ),
 
                                 "confidence",
-                                Map.of("type", "number"),
+                                Map.of(
+                                        "type",
+                                        "number",
+                                        "minimum",
+                                        0,
+                                        "maximum",
+                                        1
+                                ),
 
                                 "category",
-                                Map.of("type", "string"),
+                                Map.of(
+                                        "type",
+                                        "string"
+                                ),
 
                                 "redFlags",
                                 Map.of(
-                                        "type", "array",
+                                        "type",
+                                        "array",
                                         "items",
-                                        Map.of("type", "string")
+                                        Map.of(
+                                                "type",
+                                                "string"
+                                        )
                                 ),
 
                                 "explanation",
-                                Map.of("type", "string"),
+                                Map.of(
+                                        "type",
+                                        "string"
+                                ),
 
                                 "recommendation",
-                                Map.of("type", "string")
+                                Map.of(
+                                        "type",
+                                        "string"
+                                )
                         ),
+
                         "required",
                         List.of(
-                                "scam",
+                                "threatDetected",
                                 "confidence",
                                 "category",
                                 "redFlags",
                                 "explanation",
                                 "recommendation"
                         ),
+
                         "additionalProperties",
                         false
                 );
 
         Map<String, Object> jsonSchema =
                 Map.of(
-                        "name", "scam_analysis",
-                        "strict", true,
-                        "schema", schema
+                        "name",
+                        "threat_analysis",
+
+                        "strict",
+                        true,
+
+                        "schema",
+                        schema
                 );
 
         Map<String, Object> request =
                 Map.of(
-                        "model", "openai/gpt-oss-20b",
+                        "model",
+                        "openai/gpt-oss-20b",
 
                         "messages",
                         List.of(
                                 Map.of(
-                                        "role", "user",
-                                        "content", prompt
+                                        "role",
+                                        "user",
+                                        "content",
+                                        prompt
                                 )
                         ),
 
-                        "reasoning_effort", "low",
+                        "reasoning_effort",
+                        "low",
 
                         "response_format",
                         Map.of(
-                                "type", "json_schema",
-                                "json_schema", jsonSchema
+                                "type",
+                                "json_schema",
+
+                                "json_schema",
+                                jsonSchema
                         )
                 );
 
@@ -349,7 +432,9 @@ public class ScamAnalysisService
                             "/choices/0/message/content"
                     );
 
-            if (content.isMissingNode())
+            if (content.isMissingNode()
+                    || content.isNull()
+                    || content.asText().isBlank())
             {
                 throw new AnalysisException(
                         "AI response did not contain analysis content"

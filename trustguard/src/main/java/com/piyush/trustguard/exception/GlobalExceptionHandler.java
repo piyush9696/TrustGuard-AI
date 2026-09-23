@@ -7,14 +7,11 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.security.authentication.BadCredentialsException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler
 {
-    private static final Logger log =
-            LoggerFactory.getLogger(GlobalExceptionHandler.class);
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(
             MethodArgumentNotValidException exception)
@@ -42,7 +39,6 @@ public class GlobalExceptionHandler
     public ResponseEntity<ErrorResponse> handleAnalysisException(
             AnalysisException exception)
     {
-        log.error("Scam analysis failed", exception);
 
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -51,8 +47,21 @@ public class GlobalExceptionHandler
                         exception.getMessage()
                 ));
     }
-
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleBadCredentials(
+            BadCredentialsException exception)
+    {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(
+                        new ErrorResponse(
+                                401,
+                                "Invalid email or password"
+                        )
+                );
+    }
     @ExceptionHandler(Exception.class)
+
     public ResponseEntity<ErrorResponse> handleGeneralException(
             Exception exception)
     {

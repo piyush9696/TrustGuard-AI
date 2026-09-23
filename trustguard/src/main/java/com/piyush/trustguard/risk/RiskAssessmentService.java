@@ -8,7 +8,7 @@ public class RiskAssessmentService
     public int calculateRiskScore(
             int ruleScore,
             double aiConfidence,
-            boolean aiScam)
+            boolean threatDetected)
     {
         int cappedRuleScore =
                 Math.min(ruleScore, 75);
@@ -17,7 +17,9 @@ public class RiskAssessmentService
                 (cappedRuleScore / 75.0) * 100;
 
         double aiScore =
-                aiScam ? aiConfidence * 100 : 0;
+                threatDetected
+                        ? aiConfidence * 100
+                        : 0;
 
         double finalScore =
                 normalizedRuleScore * 0.6

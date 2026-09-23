@@ -1,6 +1,5 @@
 package com.piyush.trustguard.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.List;
@@ -9,8 +8,7 @@ import java.util.List;
 @NoArgsConstructor
 public class ScamAnalysisResponse
 {
-    @JsonProperty("scam")
-    private boolean scam;
+    private boolean threatDetected;
     private double confidence;
     private String category;
     private List<String> redFlags;
