@@ -1,76 +1,222 @@
 # TrustGuard AI
 
-TrustGuard AI is a Spring Boot backend for detecting potential scam and phishing messages using a combination of Gemini AI analysis and deterministic rule-based analysis.
+AI-powered scam and phishing detection platform.
+
+TrustGuard AI analyzes suspicious messages and URLs using rule-based security analysis, threat intelligence, and AI to identify potential scams and phishing attempts.
 
 ## Features
 
 - User registration and login
-- JWT-based authentication
-- Protected API endpoints
-- Gemini AI-based scam analysis
-- Rule-based scam detection
-- Risk score calculation
-- Combined AI and rule-based red flags
-- Swagger/OpenAPI documentation and testing
+- JWT authentication
+- BCrypt password hashing
+- AI-powered scam detection
+- Suspicious URL analysis
+- Rule-based risk detection
+- Threat intelligence integration
+- Redis-based rate limiting
+- PostgreSQL database
+- React frontend
+- Spring Boot REST API
+- Risk score and security recommendations
 
-## Scam Analysis
+## Tech Stack
 
-The `/api/analyze` endpoint accepts a message and analyzes it using two approaches.
+### Backend
 
-### Gemini AI Analysis
+- Java
+- Spring Boot
+- Spring Security
+- JWT
+- Spring Data JPA
+- Hibernate
+- PostgreSQL
+- Redis
+- Maven
+- Lombok
 
-Gemini analyzes the message for:
+### Frontend
 
-- Scam classification
-- Confidence
-- Scam category
-- Red flags
-- Explanation
-- Recommendation
+- React
+- Vite
+- JavaScript
+- CSS
 
-### Rule-Based Analysis
+### Security and AI
 
-The rule-based analyzer currently checks for:
+- JWT Authentication
+- BCrypt
+- Rule-based analysis
+- URL analysis
+- Threat intelligence
+- AI API
+- Redis rate limiting
 
-- Urgency language
-- Account threats
-- Credential or sensitive information requests
 
-The results from both approaches are combined into the final analysis.
+## Installation
 
-## Risk Scoring
+### Prerequisites
 
-The final risk score combines:
+Make sure you have the following installed:
 
-- Rule-based analysis: 60%
-- AI analysis: 40%
+- Java
+- Maven
+- Node.js
+- npm
+- PostgreSQL
+- Docker
+- Git
 
-AI confidence contributes to the risk score only when Gemini classifies the message as a scam.
+### Clone the Repository
+
+git clone https://github.com/piyush9696/TrustGuard-AI.git
+cd TrustGuard-AI
+
+
+
+## Database Setup
+
+Create a PostgreSQL database named:
+trustguard
+
+## Redis Setup 
+
+Start Redis using Docker
+docker run --name trustguard-redis -p 6379:6379 -d redis
+
+If the container already exists:
+docker start trustguard-redis
+
+### Environment Variables
+
+Create the required environment variables for the backend.
+
+These include:
+
+- PostgreSQL username
+- PostgreSQL password
+- JWT secret
+- AI API key
+- Threat intelligence API key
+
+### Start the Backend
+
+Open a terminal and go to the backend directory:
+
+```bash
+cd backend
+```
+
+Run the Spring Boot application:
+
+```bash
+mvn spring-boot:run
+```
+
+The backend will start at:
+
+http://localhost:8080
+
+### Start the Frontend
+
+Open another terminal and go to the frontend directory:
+
+```bash
+cd frontend
+```
+
+Install the dependencies:
+
+```bash
+npm install
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+The frontend will start at:
+
+http://localhost:5173
+
+### Open the Application
+
+Open the following URL in your browser:
+
+http://localhost:5173
+
+You can now create an account, log in, and use the TrustGuard AI analysis features.
+
+## Usage
+
+1. Create an account.
+2. Log in using your credentials.
+3. Enter suspicious text or a URL.
+4. Submit the content for analysis.
+5. TrustGuard analyzes the input using its security analysis pipeline.
+6. Review the risk assessment and recommendations.
+
+## API Endpoints
+
+### Register
+
+```http
+POST /api/auth/register
+```
+
+### Login
+
+```http
+POST /api/auth/login
+```
+
+### Analyze
+
+```http
+POST /api/analyze
+```
+
+The analysis endpoint requires a valid JWT token.
+
+```http
+Authorization: Bearer <JWT_TOKEN>
+```
 
 ## Security
 
-Spring Security is used with JWT authentication.
+TrustGuard AI uses:
 
-Authentication endpoints are publicly accessible, while other API endpoints require a valid JWT.
+- JWT authentication
+- BCrypt password hashing
+- Input validation
+- Redis-based rate limiting
+- URL analysis
+- Rule-based security analysis
+- Threat intelligence
+- AI-powered analysis
 
-The application uses stateless sessions.
+## Future Improvements
 
-## Swagger / OpenAPI
+- Browser extension
+- Analysis history
+- User dashboard
+- Improved URL reputation analysis
+- Additional threat intelligence sources
+- Improved AI analysis
+- Automated testing
+- Docker Compose setup
 
-Swagger/OpenAPI is configured for API documentation and testing.
+## Disclaimer
 
-Swagger UI can be used to:
+TrustGuard AI is an educational and defensive cybersecurity project.
 
-- View available endpoints
-- Authorize using a JWT
-- Test protected endpoints
-- View API responses
+The results generated by the application should not be treated as a guaranteed determination that a URL or message is malicious or safe.
 
-## Testing
+## Author
 
-JUnit tests have been added for:
+Piyush Shukla
 
-- Rule-based scam detection
-- Risk assessment
+B.Tech Computer Science Engineering
 
-The risk assessment tests also cover the case where Gemini has high confidence that a message is not a scam, ensuring that safe messages do not receive a high risk score.
+GitHub: https://github.com/piyush9696
